@@ -1,0 +1,6 @@
+streamlit
+google-genai
+requests
+beautifulsoup4
+trafilatura
+python-dotenv
