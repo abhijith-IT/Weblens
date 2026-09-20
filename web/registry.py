@@ -8,21 +8,25 @@ TOOL_REGISTRY = {
         ),
     },
     "gecbh_csi": {
-        "name": "GECBH CSI",
-        "url": "https://www.gecbh.ac.in/csi.php",
-        "description": (
-            "Official GECBH CSI page containing information about the "
-            "college CSI chapter and its activities."
-        ),
-    },
-    "csi_student_branch": {
-        "name": "CSI Student Branch GECBH",
-        "url": "https://csigecbh.in/",
-        "description": (
-            "CSI Student Branch website containing information about "
-            "CSI activities, events, and student-branch information."
-        ),
-    },
+    "name": "GECBH CSI",
+    "url": "https://www.gecbh.ac.in/csi.php",
+    "description": (
+        "Official GECBH CSI page. Use this source for questions about "
+        "CSI Student Branch GECBH, its staff advisor, executive committee, "
+        "CSI activities, workshops, competitions, project guidance, "
+        "talk sessions, and CSI-related information officially published "
+        "by GECBH."
+    ),
+},
+   "csi_student_branch": {
+    "name": "CSI Student Branch GECBH",
+    "url": "https://csigecbh.in/",
+    "description": (
+        "CSI Student Branch GECBH website. Use this source for current "
+        "student-branch activities, events, announcements, achievements, "
+        "and information specifically published on the student branch website."
+    ),
+},
 }
 
 
