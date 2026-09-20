@@ -17,7 +17,7 @@ TOOL_REGISTRY = {
     },
     "csi_student_branch": {
         "name": "CSI Student Branch GECBH",
-        "url": "https://www.csigecbh.in/",
+        "url": "https://csigecbh.in/",
         "description": (
             "CSI Student Branch website containing information about "
             "CSI activities, events, and student-branch information."
