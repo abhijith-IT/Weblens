@@ -1,23 +1,38 @@
 import streamlit as st
-
 from llm.agent import run_agent
 
 # =========================================================
 # PAGE CONFIG
 # =========================================================
-
 st.set_page_config(
     page_title="WebLens | GECBH",
-    page_icon="🌐",
+    page_icon="🌍",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
+# SVG Icons (Lucide-style monochrome outline icons)
+ICON_GLOBE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>'
+ICON_BUILDING = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>'
+ICON_LAYERS = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>'
+ICON_LANDMARK = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>'
+ICON_BRIEFCASE = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>'
+ICON_MONITOR = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>'
+ICON_NETWORK = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>'
+
+# Source mapping for sidebar and metadata formatting
+TRUSTED_SOURCES = [
+    ("GECBH Official", "https://www.gecbh.ac.in/", ICON_BUILDING),
+    ("Departments", "https://www.gecbh.ac.in/departments.php", ICON_LAYERS),
+    ("Facilities", "https://www.gecbh.ac.in/facilities.php", ICON_LANDMARK),
+    ("Placement & Career", "https://www.gecbh.ac.in/placement.php", ICON_BRIEFCASE),
+    ("GECBH CSI", "https://www.gecbh.ac.in/csi.php", ICON_MONITOR),
+    ("CSI Student Branch (Limited Access)", "https://csigecbh.in/", ICON_NETWORK),
+]
 
 # =========================================================
 # CUSTOM CSS
 # =========================================================
-
 st.markdown(
     """
 <style>
@@ -55,7 +70,7 @@ header { background: transparent !important; }
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin-top: 10vh;
+    margin-top: 5vh;
     margin-bottom: 2rem;
     animation: fadeIn 0.5s ease-out;
 }
@@ -65,7 +80,6 @@ header { background: transparent !important; }
 }
 
 .brand-mark {
-    font-size: 2.2rem;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
@@ -76,6 +90,7 @@ header { background: transparent !important; }
     border: 1px solid var(--border-color);
     border-radius: 14px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    color: var(--accent);
 }
 .brand-title {
     font-size: 2rem;
@@ -85,7 +100,7 @@ header { background: transparent !important; }
     letter-spacing: -0.02em;
 }
 .brand-subtitle {
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--text-secondary);
     max-width: 480px;
     line-height: 1.5;
@@ -110,6 +125,8 @@ div.stButton > button {
 div.stButton > button p {
     margin: 0 !important;
     font-size: 0.9rem !important;
+    display: flex;
+    align-items: center;
 }
 div.stButton > button:hover {
     background-color: var(--bg-secondary) !important;
@@ -117,32 +134,31 @@ div.stButton > button:hover {
     color: var(--text-primary) !important;
 }
 
-/* Trusted Sources */
-.sources-container {
-    display: flex;
-    justify-content: center;
-    gap: 0.8rem;
-    flex-wrap: wrap;
-    margin-top: 2rem;
+/* Add generic search SVG icon to suggestion buttons */
+div.stButton > button p::before {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    background-color: currentColor;
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>') no-repeat center / contain;
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>') no-repeat center / contain;
 }
-.source-tag {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.8rem;
-    border-radius: 6px;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+
+/* Override the icon for the clear conversation button in sidebar */
+section[data-testid="stSidebar"] div.stButton > button p::before {
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>') no-repeat center / contain;
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>') no-repeat center / contain;
+}
+
+/* Subtle grounding statement */
+.grounding-statement {
+    text-align: center;
     font-size: 0.75rem;
     color: var(--text-secondary);
-}
-.source-tag a {
-    color: var(--text-secondary) !important;
-    text-decoration: none !important;
-    transition: color 0.2s;
-}
-.source-tag a:hover {
-    color: var(--text-primary) !important;
+    margin-top: 2.5rem;
+    letter-spacing: 0.02em;
 }
 
 /* Chat Input Area */
@@ -207,7 +223,7 @@ div[data-testid="stChatMessageContent"] {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     padding: 0.25rem 0.6rem;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
     margin-top: 0.8rem;
     margin-bottom: 0.5rem;
@@ -232,15 +248,21 @@ div[data-testid="stChatMessageContent"] {
     letter-spacing: 0.05em;
     margin-bottom: 0.3rem;
 }
-.source-card-link {
+.source-card-title {
     font-size: 0.8rem;
-    color: var(--accent) !important;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+}
+.source-card-link {
+    font-size: 0.75rem;
+    color: var(--text-secondary) !important;
     text-decoration: none !important;
     word-break: break-all;
     display: block;
 }
 .source-card-link:hover {
-    text-decoration: underline !important;
+    color: var(--accent) !important;
 }
 
 /* Sidebar */
@@ -257,6 +279,9 @@ section[data-testid="stSidebar"] {
     margin-bottom: 2rem;
     color: var(--text-primary);
 }
+.sidebar-header svg {
+    color: var(--accent);
+}
 .sidebar-section {
     font-size: 0.7rem;
     text-transform: uppercase;
@@ -267,7 +292,7 @@ section[data-testid="stSidebar"] {
 .sidebar-link {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     padding: 0.5rem 0.8rem;
     border-radius: 6px;
     color: var(--text-secondary) !important;
@@ -279,6 +304,13 @@ section[data-testid="stSidebar"] {
 .sidebar-link:hover {
     background-color: var(--bg-secondary);
     color: var(--text-primary) !important;
+}
+.sidebar-link svg {
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+.sidebar-link:hover svg {
+    color: var(--text-primary);
 }
 </style>
 """,
@@ -302,18 +334,23 @@ if "pending_query" not in st.session_state:
 
 with st.sidebar:
     st.markdown(
-        """<div class="sidebar-header">
-<span>🌐</span> WebLens
+        f"""<div class="sidebar-header">
+{ICON_GLOBE} WebLens
 </div>
 <div class="sidebar-section">Trusted Sources</div>
-<a href="https://www.gecbh.ac.in/" target="_blank" class="sidebar-link">🏫 GECBH Official</a>
-<a href="https://www.gecbh.ac.in/csi.php" target="_blank" class="sidebar-link">💻 GECBH CSI</a>
-<a href="https://csigecbh.in/" target="_blank" class="sidebar-link">🌐 CSI Student Branch</a>
-<br>""",
+""",
         unsafe_allow_html=True,
     )
     
-    if st.button("🗑️ Clear conversation", use_container_width=True):
+    for name, url, icon in TRUSTED_SOURCES:
+        st.markdown(
+            f'<a href="{url}" target="_blank" class="sidebar-link">{icon} {name}</a>',
+            unsafe_allow_html=True
+        )
+        
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    if st.button("Clear conversation", use_container_width=True):
         st.session_state.messages = []
         st.session_state.pending_query = None
         st.rerun()
@@ -326,8 +363,8 @@ with st.sidebar:
 if not st.session_state.messages:
     
     st.markdown(
-        """<div class="landing-container">
-<div class="brand-mark">🌐</div>
+        f"""<div class="landing-container">
+<div class="brand-mark">{ICON_GLOBE}</div>
 <div class="brand-title">WebLens</div>
 <div class="brand-subtitle">Domain-scoped AI web agent for GECBH. Answers using trusted sources.</div>
 </div>""",
@@ -335,24 +372,29 @@ if not st.session_state.messages:
     )
 
     examples = [
-        ("🏫", "What is the vision of GECBH?"),
-        ("💻", "What activities are associated with CSI at GECBH?"),
-        ("👤", "Who is the staff advisor listed on the GECBH CSI page?"),
-        ("🌐", "What is the CSI Student Branch at GECBH?"),
+        "What is the vision of GECBH?",
+        "What departments are available at GECBH?",
+        "What facilities are available at GECBH?",
+        "What information is available about placements at GECBH?",
     ]
 
+    def set_pending_query(q):
+        st.session_state.pending_query = q
+
     col1, col2 = st.columns(2)
-    for index, (icon, question) in enumerate(examples):
+    for index, question in enumerate(examples):
         with (col1 if index % 2 == 0 else col2):
-            if st.button(f"{icon}  {question}", key=f"example_{index}", use_container_width=True):
-                st.session_state.pending_query = question
-                st.rerun()
+            st.button(
+                question, 
+                key=f"example_{index}", 
+                use_container_width=True,
+                on_click=set_pending_query,
+                args=(question,)
+            )
 
     st.markdown(
-        """<div class="sources-container">
-<div class="source-tag">🏫 <a href="https://www.gecbh.ac.in/" target="_blank">GECBH Official</a></div>
-<div class="source-tag">💻 <a href="https://www.gecbh.ac.in/csi.php" target="_blank">GECBH CSI</a></div>
-<div class="source-tag">🌐 <a href="https://csigecbh.in/" target="_blank">CSI Student Branch</a></div>
+        """<div class="grounding-statement">
+Answers grounded in trusted GECBH sources
 </div>""",
         unsafe_allow_html=True,
     )
@@ -362,9 +404,16 @@ if not st.session_state.messages:
 # CHAT HISTORY
 # =========================================================
 
+def get_source_metadata(url):
+    for name, source_url, _ in TRUSTED_SOURCES:
+        if source_url in url or url in source_url:
+            return name
+    return "Web Source"
+
 for message in st.session_state.messages:
     
-    avatar = "🌐" if message["role"] == "assistant" else "👤"
+    # We use built-in Streamlit generic avatars ("user"/"assistant") which automatically render as professional icons instead of emojis.
+    avatar = "assistant" if message["role"] == "assistant" else "user"
     
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
@@ -376,7 +425,7 @@ for message in st.session_state.messages:
             if tool_name:
                 st.markdown(
                     f"""<div class="tool-badge-container">
-<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z"></path></svg>
 Used tool: <span>{tool_name}</span>
 </div>""",
                     unsafe_allow_html=True,
@@ -384,9 +433,11 @@ Used tool: <span>{tool_name}</span>
 
             if source_url:
                 for url in source_url.split(", "):
+                    source_name = get_source_metadata(url)
                     st.markdown(
                         f"""<div class="source-card-chat">
 <div class="source-card-header">Source</div>
+<div class="source-card-title">{source_name}</div>
 <a href="{url}" target="_blank" class="source-card-link">{url}</a>
 </div>""",
                         unsafe_allow_html=True,
@@ -410,10 +461,10 @@ if st.session_state.pending_query:
 
 if query:
     st.session_state.messages.append({"role": "user", "content": query})
-    with st.chat_message("user", avatar="👤"):
+    with st.chat_message("user", avatar="user"):
         st.markdown(query)
 
-    with st.chat_message("assistant", avatar="🌐"):
+    with st.chat_message("assistant", avatar="assistant"):
         with st.spinner("Finding the right trusted source..."):
             try:
                 result = run_agent(query)
@@ -426,7 +477,7 @@ if query:
                 if tool_name:
                     st.markdown(
                         f"""<div class="tool-badge-container">
-<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.77 3.77z"></path></svg>
 Used tool: <span>{tool_name}</span>
 </div>""",
                         unsafe_allow_html=True,
@@ -434,9 +485,11 @@ Used tool: <span>{tool_name}</span>
 
                 if source_url:
                     for url in source_url.split(", "):
+                        source_name = get_source_metadata(url)
                         st.markdown(
                             f"""<div class="source-card-chat">
 <div class="source-card-header">Source</div>
+<div class="source-card-title">{source_name}</div>
 <a href="{url}" target="_blank" class="source-card-link">{url}</a>
 </div>""",
                             unsafe_allow_html=True,

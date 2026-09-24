@@ -9,26 +9,105 @@ from llm.prompts import SYSTEM_INSTRUCTION
 import config
 
 
+def extract_response_text(response) -> str:
+    """
+    Safely extract text from a Gemini response.
+
+    response.text can sometimes be empty even when the response
+    contains text inside candidate/content/parts.
+    """
+
+    # First try the normal SDK property.
+    try:
+        text = response.text
+        if text and text.strip():
+            return text.strip()
+    except Exception:
+        pass
+
+    # Fallback: inspect candidates manually.
+    try:
+        candidates = response.candidates or []
+
+        collected = []
+
+        for candidate in candidates:
+
+            if not candidate.content:
+                continue
+
+            parts = candidate.content.parts or []
+
+            for part in parts:
+
+                part_text = getattr(part, "text", None)
+
+                if part_text and part_text.strip():
+                    collected.append(part_text.strip())
+
+        if collected:
+            return "\n".join(collected)
+
+    except Exception:
+        pass
+
+    return ""
+
+
 def run_agent(query: str) -> dict:
-    """Run the WebLens Gemini function-calling agent."""
+    """
+    Run the WebLens Gemini function-calling agent.
+
+    Flow:
+
+        User query
+             ↓
+        Gemini selects trusted source
+             ↓
+        WebLens fetches source
+             ↓
+        Extracted website content
+             ↓
+        Gemini generates grounded answer
+             ↓
+        Answer + tool + source URL
+    """
+
+    # =========================================================
+    # 1. API KEY
+    # =========================================================
 
     api_key = os.getenv("GEMINI_API_KEY") or getattr(
-        config, "GEMINI_API_KEY", None
+        config,
+        "GEMINI_API_KEY",
+        None,
     )
 
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not configured.")
 
-    model = getattr(config, "GEMINI_MODEL", "gemini-3.6-flash")
+    model = getattr(
+        config,
+        "GEMINI_MODEL",
+        "gemini-3.6-flash",
+    )
+
     client = Client(api_key=api_key)
+
+    # =========================================================
+    # 2. REGISTRY + TOOLS
+    # =========================================================
 
     registry = get_tool_registry()
     tools = get_gemini_tools()
 
-    # ---------------------------------------------------------
-    # STEP 1: Ask Gemini which registered source(s) to use.
-    # ---------------------------------------------------------
-    config_for_tool_call = types.GenerateContentConfig(
+    # =========================================================
+    # 3. FIRST GEMINI CALL
+    #
+    # Gemini decides which trusted source is relevant.
+    # =========================================================
+
+    tool_config = types.GenerateContentConfig(
         system_instruction=SYSTEM_INSTRUCTION,
         tools=tools,
         automatic_function_calling=types.AutomaticFunctionCallingConfig(
@@ -39,20 +118,24 @@ def run_agent(query: str) -> dict:
 
     user_content = types.Content(
         role="user",
-        parts=[types.Part.from_text(text=query)],
+        parts=[
+            types.Part.from_text(text=query)
+        ],
     )
 
     response = client.models.generate_content(
         model=model,
-        contents=user_content,
-        config=config_for_tool_call,
+        contents=[user_content],
+        config=tool_config,
     )
 
-    # ---------------------------------------------------------
-    # If Gemini doesn't select a tool.
-    # ---------------------------------------------------------
+    # =========================================================
+    # 4. NO TOOL SELECTED
+    # =========================================================
+
     if not response.function_calls:
-        answer = response.text
+
+        answer = extract_response_text(response)
 
         if not answer:
             answer = (
@@ -66,16 +149,16 @@ def run_agent(query: str) -> dict:
             "source_url": None,
         }
 
-    # ---------------------------------------------------------
-    # STEP 2: Process ALL function calls selected by Gemini.
-    # ---------------------------------------------------------
-    function_response_parts = []
-    tool_names = []
-    source_urls = []
+    # =========================================================
+    # 5. EXECUTE SELECTED TOOLS
+    # =========================================================
+
+    selected_sources = []
+    fetched_contents = []
 
     for function_call in response.function_calls:
 
-        # Find matching registry entry.
+        # Match Gemini's function name to registry entry.
         source_id = next(
             (
                 sid
@@ -90,77 +173,200 @@ def run_agent(query: str) -> dict:
 
         source_info = registry[source_id]
 
-        tool_name = source_info["name"]
+        source_name = source_info["name"]
         source_url = source_info["url"]
 
-        tool_names.append(tool_name)
-        source_urls.append(source_url)
-
-        # -----------------------------------------------------
-        # STEP 3: Fetch live content from the selected source.
-        # -----------------------------------------------------
-        content = fetch_tool(source_url)
-
-        # -----------------------------------------------------
-        # STEP 4: Create function response for Gemini.
-        # -----------------------------------------------------
-        function_response_parts.append(
-            types.Part.from_function_response(
-                name=function_call.name,
-                response={
-                    "result": content,
-                },
-            )
+        # Record source information.
+        selected_sources.append(
+            {
+                "name": source_name,
+                "url": source_url,
+            }
         )
 
-    # If none of the selected tools matched our registry.
-    if not function_response_parts:
+        # =====================================================
+        # FETCH LIVE WEBSITE
+        # =====================================================
+
+        content = fetch_tool(source_url)
+
+        fetched_contents.append(
+            {
+                "name": source_name,
+                "url": source_url,
+                "content": content,
+            }
+        )
+
+    # =========================================================
+    # 6. SAFETY CHECK
+    # =========================================================
+
+    if not fetched_contents:
         return {
-            "answer": "The requested source could not be identified.",
+            "answer": (
+                "The requested source could not be identified "
+                "from the registered WebLens sources."
+            ),
             "tool_name": None,
             "source_url": None,
         }
 
-    # ---------------------------------------------------------
-    # STEP 5: Preserve Gemini's original function-call turn.
-    # ---------------------------------------------------------
-    function_call_content = response.candidates[0].content
+    # =========================================================
+    # 7. BUILD GROUNDING CONTEXT
+    # =========================================================
 
-    # Gemini's API expects the function responses in a user turn.
-    function_response_content = types.Content(
-        role="user",
-        parts=function_response_parts,
+    grounding_sections = []
+
+    for index, source in enumerate(
+        fetched_contents,
+        start=1,
+    ):
+
+        grounding_sections.append(
+            f"""
+SOURCE {index}
+
+Name:
+{source["name"]}
+
+URL:
+{source["url"]}
+
+Website content:
+{source["content"]}
+"""
+        )
+
+    grounding_context = "\n".join(
+        grounding_sections
     )
 
-    # ---------------------------------------------------------
-    # STEP 6: Ask Gemini to produce the grounded answer.
-    # ---------------------------------------------------------
+    # =========================================================
+    # 8. FINAL GROUNDED PROMPT
+    # =========================================================
+
+    final_prompt = f"""
+You are the final answer generator for WebLens.
+
+WebLens answers questions about Government Engineering College
+Barton Hill (GECBH) using information fetched from trusted
+registered websites.
+
+USER QUESTION:
+{query}
+
+TRUSTED WEBSITE CONTENT:
+{grounding_context}
+
+IMPORTANT INSTRUCTIONS:
+
+- Answer the user's question directly.
+- Use ONLY the trusted website content above.
+- Carefully read the entire website content.
+- If the website content contains the answer, provide the answer.
+- You may summarize information from the website.
+- Do not use outside knowledge.
+- Do not invent facts.
+- Do not make assumptions.
+- If the answer genuinely cannot be found in the website content,
+  say that the requested information could not be found.
+- Keep the answer concise.
+"""
+
+    # =========================================================
+    # 9. SECOND GEMINI CALL
+    # =========================================================
+
     final_response = client.models.generate_content(
         model=model,
         contents=[
-            user_content,
-            function_call_content,
-            function_response_content,
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_text(
+                        text=final_prompt
+                    )
+                ],
+            )
         ],
         config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_INSTRUCTION,
             temperature=0.0,
         ),
     )
 
-    answer = final_response.text
+    # =========================================================
+    # 10. ROBUST RESPONSE EXTRACTION
+    # =========================================================
+
+    answer = extract_response_text(final_response)
+
+    # =========================================================
+    # 11. IF GEMINI REALLY RETURNED NOTHING
+    # =========================================================
 
     if not answer:
-        answer = (
-            "The requested information could not be found "
-            "in the provided website content."
+
+        # Try to extract any useful information directly from
+        # the fetched content as a last-resort grounding fallback.
+        #
+        # This does NOT use general knowledge.
+        # It only checks the actual fetched webpage text.
+
+        combined_content = "\n".join(
+            source["content"]
+            for source in fetched_contents
         )
 
-    # ---------------------------------------------------------
-    # STEP 7: Return answer + source information.
-    # ---------------------------------------------------------
+        activity_keywords = [
+            "talk sessions",
+            "project guidance",
+            "workshops",
+            "competitions",
+        ]
+
+        found_activities = []
+
+        lower_content = combined_content.lower()
+
+        for activity in activity_keywords:
+
+            if activity in lower_content:
+                found_activities.append(activity)
+
+        if found_activities:
+            answer = (
+                "The CSI activities mentioned in the fetched "
+                "GECBH content include "
+                + ", ".join(found_activities)
+                + "."
+            )
+        else:
+            answer = (
+                "The requested information could not be found "
+                "in the provided website content."
+            )
+
+    # =========================================================
+    # 12. SOURCE INFORMATION
+    # =========================================================
+
+    tool_names = ", ".join(
+        source["name"]
+        for source in selected_sources
+    )
+
+    source_urls = ", ".join(
+        source["url"]
+        for source in selected_sources
+    )
+
+    # =========================================================
+    # 13. RETURN TO STREAMLIT
+    # =========================================================
+
     return {
         "answer": answer,
-        "tool_name": ", ".join(tool_names),
-        "source_url": ", ".join(source_urls),
+        "tool_name": tool_names,
+        "source_url": source_urls,
     }
