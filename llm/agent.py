@@ -89,7 +89,7 @@ def run_agent(query: str) -> dict:
     model = getattr(
         config,
         "GEMINI_MODEL",
-        "gemini-3.6-flash",
+        "gemini-3.1-flash-lite",
     )
 
     client = Client(api_key=api_key)

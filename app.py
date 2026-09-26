@@ -24,7 +24,7 @@ ICON_NETWORK = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" v
 TRUSTED_SOURCES = [
     ("GECBH Official", "https://www.gecbh.ac.in/", ICON_BUILDING),
     ("Departments", "https://www.gecbh.ac.in/departments.php", ICON_LAYERS),
-    ("Facilities", "https://www.gecbh.ac.in/facilities.php", ICON_LANDMARK),
+    ("Facilities", "https://www.gecbh.ac.in/campus-facilities.php", ICON_LANDMARK),
     ("Placement & Career", "https://www.gecbh.ac.in/placement.php", ICON_BRIEFCASE),
     ("GECBH CSI", "https://www.gecbh.ac.in/csi.php", ICON_MONITOR),
     ("CSI Student Branch (Limited Access)", "https://csigecbh.in/", ICON_NETWORK),
@@ -312,6 +312,54 @@ section[data-testid="stSidebar"] {
 .sidebar-link:hover svg {
     color: var(--text-primary);
 }
+/* Keep existing chat content fully readable while Streamlit is processing */
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] > section {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+div[data-testid="stChatMessage"],
+div[data-testid="stChatMessageContent"] {
+    opacity: 1 !important;
+    filter: none !important;
+}
+/* Prevent Streamlit from dimming stale elements during reruns */
+[data-testid="stAppViewBlockContainer"] {
+    opacity: 1 !important;
+}
+
+.element-container {
+    opacity: 1 !important;
+    transition: none !important;
+}
+
+[data-stale="true"] {
+    opacity: 1 !important;
+    transition: none !important;
+}
+/* Disable Streamlit rerun/stale-element dimming */
+[data-stale="true"],
+[data-stale="true"] * {
+    opacity: 1 !important;
+    filter: none !important;
+    transition: none !important;
+}
+
+/* Keep the entire chat area fully visible during reruns */
+[data-testid="stChatMessage"],
+[data-testid="stChatMessage"] * {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+/* Prevent Streamlit containers from fading while the app is running */
+[data-testid="stAppViewBlockContainer"],
+[data-testid="stAppViewBlockContainer"] > div,
+.element-container {
+    opacity: 1 !important;
+    filter: none !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -360,44 +408,42 @@ with st.sidebar:
 # HERO & SUGGESTIONS
 # =========================================================
 
-if not st.session_state.messages:
-    
-    st.markdown(
-        f"""<div class="landing-container">
+st.markdown(
+    f"""<div class="landing-container">
 <div class="brand-mark">{ICON_GLOBE}</div>
 <div class="brand-title">WebLens</div>
 <div class="brand-subtitle">Domain-scoped AI web agent for GECBH. Answers using trusted sources.</div>
 </div>""",
-        unsafe_allow_html=True,
-    )
+    unsafe_allow_html=True,
+)
 
-    examples = [
-        "What is the vision of GECBH?",
-        "What departments are available at GECBH?",
-        "What facilities are available at GECBH?",
-        "What information is available about placements at GECBH?",
-    ]
+examples = [
+    "What is the vision of GECBH?",
+    "What departments are available at GECBH?",
+    "What facilities are available at GECBH?",
+    "What information is available about placements at GECBH?",
+]
 
-    def set_pending_query(q):
-        st.session_state.pending_query = q
+def set_pending_query(q):
+    st.session_state.pending_query = q
 
-    col1, col2 = st.columns(2)
-    for index, question in enumerate(examples):
-        with (col1 if index % 2 == 0 else col2):
-            st.button(
-                question, 
-                key=f"example_{index}", 
-                use_container_width=True,
-                on_click=set_pending_query,
-                args=(question,)
-            )
+col1, col2 = st.columns(2)
+for index, question in enumerate(examples):
+    with (col1 if index % 2 == 0 else col2):
+        st.button(
+            question, 
+            key=f"example_{index}", 
+            use_container_width=True,
+            on_click=set_pending_query,
+            args=(question,)
+        )
 
-    st.markdown(
-        """<div class="grounding-statement">
+st.markdown(
+    """<div class="grounding-statement">
 Answers grounded in trusted GECBH sources
 </div>""",
-        unsafe_allow_html=True,
-    )
+    unsafe_allow_html=True,
+)
 
 
 # =========================================================
@@ -432,8 +478,10 @@ Used tool: <span>{tool_name}</span>
                 )
 
             if source_url:
-                for url in source_url.split(", "):
-                    source_name = get_source_metadata(url)
+                tool_names_list = (tool_name or "").split(", ")
+                source_urls_list = source_url.split(", ")
+                for i, url in enumerate(source_urls_list):
+                    source_name = tool_names_list[i] if i < len(tool_names_list) else get_source_metadata(url)
                     st.markdown(
                         f"""<div class="source-card-chat">
 <div class="source-card-header">Source</div>
@@ -484,8 +532,10 @@ Used tool: <span>{tool_name}</span>
                     )
 
                 if source_url:
-                    for url in source_url.split(", "):
-                        source_name = get_source_metadata(url)
+                    tool_names_list = (tool_name or "").split(", ")
+                    source_urls_list = source_url.split(", ")
+                    for i, url in enumerate(source_urls_list):
+                        source_name = tool_names_list[i] if i < len(tool_names_list) else get_source_metadata(url)
                         st.markdown(
                             f"""<div class="source-card-chat">
 <div class="source-card-header">Source</div>
