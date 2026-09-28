@@ -1,114 +1,132 @@
 # WebLens — Domain-Scoped AI Web Agent for GECBH
 
-WebLens is a domain-scoped AI web agent designed to answer college-related questions using trusted and predefined web sources.
+WebLens is a Streamlit-based AI assistant for Government Engineering College Barton Hill (GECBH).  
+It answers questions using only trusted, registered college sources with Gemini function calling and grounded response generation.
 
-The system uses Gemini native function calling to select the most relevant registered source, fetches live content from that source, and generates a grounded answer based only on the retrieved information.
+---
+
+## Recent Updates
+
+- Added modular LLM layer (`llm/agent.py`, `llm/tools.py`, `llm/prompts.py`)
+- Expanded trusted source registry (`web/registry.py`)
+- Added local web indexing support (`web/indexer.py`)
+- Added local relevance search over indexed pages (`web/site_search.py`)
+- Updated Gemini model configuration in `config.py`
 
 ---
 
 ## Features
 
-- Natural-language question answering
-- Domain-scoped to GECBH
-- Gemini native function/tool calling
-- Dynamic source selection
-- Live web content fetching
-- Multiple trusted sources
-- Grounded answers
-- Anti-hallucination fallback
-- Source URL attribution
-- Tool invocation display
-- Streamlit chat interface
-- Error handling for API and network failures
-- Automated tests
+- Domain-scoped question answering for GECBH
+- Gemini native function/tool calling for source selection
+- Live trusted-source web fetching (`web/fetcher.py`)
+- Grounded final-answer generation from fetched content only
+- Source attribution (tool and URL)
+- Streamlit chat UI with source cards
+- Local index builder for GECBH pages
+- Local page relevance ranking utilities
+- Automated test coverage for key modules
 
 ---
 
 ## Trusted Sources
 
-WebLens currently uses the following registered sources.
+WebLens currently registers the following trusted sources:
 
-### 1. GECBH Official Website
-
-URL:
-
-https://www.gecbh.ac.in/
-
-Description:
-
-Official Government Engineering College Barton Hill website containing college information, departments, faculty, notices, and general institutional information.
-
----
-
-### 2. GECBH CSI
-
-URL:
-
-https://www.gecbh.ac.in/csi.php
-
-Description:
-
-Official GECBH CSI page containing information about the CSI Student Branch, staff advisor, executive committee, activities, workshops, competitions, project guidance, and related CSI information.
+1. **GECBH Official Website**  
+   https://www.gecbh.ac.in/
+2. **GECBH Departments**  
+   https://www.gecbh.ac.in/departments.php
+3. **GECBH Campus Facilities**  
+   https://www.gecbh.ac.in/campus-facilities.php
+4. **GECBH Placement & Career**  
+   https://www.gecbh.ac.in/placement.php
+5. **GECBH CSI**  
+   https://www.gecbh.ac.in/csi.php
+6. **CSI Student Branch GECBH**  
+   https://csigecbh.in/
 
 ---
 
-### 3. CSI Student Branch GECBH
-
-URL:
-
-https://csigecbh.in/
-
-Description:
-
-CSI Student Branch GECBH website containing information about student-branch activities, events, announcements, achievements, and related student activities.
-
----
-
-## Architecture
+## Project Structure
 
 ```text
-                    User Query
-                        |
-                        v
-                +---------------+
-                |   Streamlit   |
-                |      UI       |
-                +---------------+
-                        |
-                        v
-                +---------------+
-                | Gemini Agent  |
-                +---------------+
-                        |
-                        v
-             Gemini Function Calling
-                        |
-          +-------------+-------------+
-          |             |             |
-          v             v             v
-     GECBH Official  GECBH CSI   CSI Student
-       Website                    Branch
-          |             |             |
-          +-------------+-------------+
-                        |
-                        v
-                  Web Fetcher
-                        |
-                        v
-                Readable Web Text
-                        |
-                        v
-                 Gemini Grounding
-                        |
-                        v
-                  Final Answer
-                        |
-              +---------+---------+
-              |                   |
-              v                   v
-         Tool Invoked          Source URL
+Weblens/
+├── app.py
+├── config.py
+├── llm/
+│   ├── agent.py
+│   ├── prompts.py
+│   └── tools.py
+├── web/
+│   ├── fetcher.py
+│   ├── registry.py
+│   ├── indexer.py
+│   └── site_search.py
+├── data/
+│   └── gecbh_index.json
+└── tests/
+```
 
+---
 
+## Runtime Flow
 
+```text
+User Query
+   ↓
+Streamlit UI (app.py)
+   ↓
+Gemini source selection (function calling)
+   ↓
+Trusted source fetch (web/fetcher.py)
+   ↓
+Grounded final-answer generation (llm/agent.py)
+   ↓
+Answer + source metadata
+```
 
-rs within a restricted college domain.
+---
+
+## Setup
+
+1. Create and activate a virtual environment.
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Configure environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Set `GEMINI_API_KEY` in `.env`.
+
+---
+
+## Run the App
+
+```bash
+streamlit run app.py
+```
+
+---
+
+## Build Local Index (Optional)
+
+```bash
+python -m web.indexer
+```
+
+This generates `data/gecbh_index.json`.
+
+---
+
+## Run Tests
+
+```bash
+pytest -q
+```
