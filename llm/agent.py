@@ -54,7 +54,7 @@ def extract_response_text(response) -> str:
     return ""
 
 
-def run_agent(query: str) -> dict:
+def run_agent(query: str, session_cache: dict | None = None) -> dict:
     """
     Run the WebLens Gemini function-calling agent.
 
@@ -147,6 +147,12 @@ def run_agent(query: str) -> dict:
             "answer": answer,
             "tool_name": None,
             "source_url": None,
+            "invocation_log": {
+                "tools_considered": [info["name"] for info in registry.values()],
+                "selected_tool": "None",
+                "reason": "No relevant tool was identified by the Gemini agent for this query.",
+                "fetch_status": "N/A"
+            }
         }
 
     # =========================================================
@@ -185,16 +191,27 @@ def run_agent(query: str) -> dict:
         )
 
         # =====================================================
-        # FETCH LIVE WEBSITE
+        # FETCH LIVE WEBSITE (with session-level caching)
         # =====================================================
 
-        content = fetch_tool(source_url)
+        cache_status = "MISS"
+
+        if session_cache is not None and source_url in session_cache:
+            content = session_cache[source_url]
+            cache_status = "HIT"
+        else:
+            content = fetch_tool(source_url)
+
+            # Only cache successful, non-empty fetches.
+            if content and content.strip() and session_cache is not None:
+                session_cache[source_url] = content
 
         fetched_contents.append(
             {
                 "name": source_name,
                 "url": source_url,
                 "content": content,
+                "cache_status": cache_status,
             }
         )
 
@@ -203,6 +220,9 @@ def run_agent(query: str) -> dict:
     # =========================================================
 
     if not fetched_contents:
+        
+        failed_tool_names = ", ".join(source["name"] for source in selected_sources) if selected_sources else "Unknown"
+        
         return {
             "answer": (
                 "The requested source could not be identified "
@@ -210,6 +230,12 @@ def run_agent(query: str) -> dict:
             ),
             "tool_name": None,
             "source_url": None,
+            "invocation_log": {
+                "tools_considered": [info["name"] for info in registry.values()],
+                "selected_tool": failed_tool_names,
+                "reason": "Selected by the Gemini tool-calling agent based on the query.",
+                "fetch_status": "failed"
+            }
         }
 
     # =========================================================
@@ -365,8 +391,19 @@ IMPORTANT INSTRUCTIONS:
     # 13. RETURN TO STREAMLIT
     # =========================================================
 
+    # Determine cache status from fetched contents.
+    cache_statuses = [source.get("cache_status", "MISS") for source in fetched_contents]
+    overall_cache_status = cache_statuses[0] if len(cache_statuses) == 1 else ", ".join(cache_statuses)
+
     return {
         "answer": answer,
         "tool_name": tool_names,
         "source_url": source_urls,
+        "invocation_log": {
+            "tools_considered": [info["name"] for info in registry.values()],
+            "selected_tool": tool_names,
+            "reason": "Selected by the Gemini tool-calling agent based on the query.",
+            "fetch_status": "success",
+            "cache_status": overall_cache_status,
+        }
     }

@@ -375,6 +375,9 @@ if "messages" not in st.session_state:
 if "pending_query" not in st.session_state:
     st.session_state.pending_query = None
 
+if "url_cache" not in st.session_state:
+    st.session_state.url_cache = {}
+
 
 # =========================================================
 # SIDEBAR
@@ -401,6 +404,7 @@ with st.sidebar:
     if st.button("Clear conversation", use_container_width=True):
         st.session_state.messages = []
         st.session_state.pending_query = None
+        st.session_state.url_cache = {}
         st.rerun()
 
 
@@ -467,6 +471,17 @@ for message in st.session_state.messages:
         if message["role"] == "assistant":
             tool_name = message.get("tool_name")
             source_url = message.get("source_url")
+            invocation_log = message.get("invocation_log")
+
+            if invocation_log:
+                with st.expander("Agent Trace"):
+                    tools_list = "\n".join(f"• {t}" for t in invocation_log.get("tools_considered", []))
+                    fetch_status = invocation_log.get("fetch_status", "")
+                    fetch_icon = "✓ Successfully fetched" if fetch_status == "success" else ("❌ Failed to fetch" if fetch_status == "failed" else fetch_status)
+                    cache_status = invocation_log.get("cache_status", "")
+                    cache_icon = "✓ Cache hit" if cache_status == "HIT" else ("↻ Cache miss" if cache_status == "MISS" else cache_status)
+                    cache_line = f"\n\n**Cache status**\n{cache_icon}" if cache_status else ""
+                    st.markdown(f"**Tools considered**\n{tools_list}\n\n**Selected tool**\n{invocation_log.get('selected_tool', 'None')}\n\n**Reason**\n{invocation_log.get('reason', '')}\n\n**Fetch status**\n{fetch_icon}{cache_line}")
 
             if tool_name:
                 st.markdown(
@@ -515,12 +530,23 @@ if query:
     with st.chat_message("assistant", avatar="assistant"):
         with st.spinner("Finding the right trusted source..."):
             try:
-                result = run_agent(query)
+                result = run_agent(query, session_cache=st.session_state.url_cache)
                 answer = result.get("answer", "No answer was returned.")
                 tool_name = result.get("tool_name")
                 source_url = result.get("source_url")
+                invocation_log = result.get("invocation_log")
 
                 st.markdown(answer)
+
+                if invocation_log:
+                    with st.expander("Agent Trace"):
+                        tools_list = "\n".join(f"• {t}" for t in invocation_log.get("tools_considered", []))
+                        fetch_status = invocation_log.get("fetch_status", "")
+                        fetch_icon = "✓ Successfully fetched" if fetch_status == "success" else ("❌ Failed to fetch" if fetch_status == "failed" else fetch_status)
+                        cache_status = invocation_log.get("cache_status", "")
+                        cache_icon = "✓ Cache hit" if cache_status == "HIT" else ("↻ Cache miss" if cache_status == "MISS" else cache_status)
+                        cache_line = f"\n\n**Cache status**\n{cache_icon}" if cache_status else ""
+                        st.markdown(f"**Tools considered**\n{tools_list}\n\n**Selected tool**\n{invocation_log.get('selected_tool', 'None')}\n\n**Reason**\n{invocation_log.get('reason', '')}\n\n**Fetch status**\n{fetch_icon}{cache_line}")
 
                 if tool_name:
                     st.markdown(
@@ -551,6 +577,7 @@ Used tool: <span>{tool_name}</span>
                         "content": answer,
                         "tool_name": tool_name,
                         "source_url": source_url,
+                        "invocation_log": invocation_log,
                     }
                 )
 
