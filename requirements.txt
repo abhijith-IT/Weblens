@@ -4,3 +4,5 @@ requests
 beautifulsoup4
 trafilatura
 python-dotenv
+pytest
+pytest-mock

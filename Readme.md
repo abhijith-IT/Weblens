@@ -90,10 +90,12 @@ Answer + source metadata
 
 ## Setup
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
+Create and activate a virtual environment, then install the application and
+test dependencies:
 
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -113,6 +115,19 @@ Set `GEMINI_API_KEY` in `.env`.
 streamlit run app.py
 ```
 
+## Deploy on Streamlit Community Cloud
+
+1. Push this repository to GitHub.
+2. Open [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
+3. Select the `abhijith-IT/Weblens` repository, branch `main`, and file `app.py`.
+4. In **Advanced settings**, add this secret:
+
+```toml
+GEMINI_API_KEY = "your_gemini_api_key_here"
+```
+
+5. Deploy the app. Never commit `.env` or the API key to GitHub.
+
 ---
 
 ## Build Local Index (Optional)
@@ -128,5 +143,5 @@ This generates `data/gecbh_index.json`.
 ## Run Tests
 
 ```bash
-pytest -q
+python3 -m pytest -v
 ```

@@ -4,6 +4,7 @@ from google.genai import Client, types
 
 from web.registry import get_tool_registry
 from web.fetcher import fetch_tool
+from web.site_search import find_relevant_pages, load_index
 from llm.tools import get_gemini_tools
 from llm.prompts import SYSTEM_INSTRUCTION
 import config
@@ -52,6 +53,28 @@ def extract_response_text(response) -> str:
         pass
 
     return ""
+
+
+def fetch_indexed_content(query: str, source_url: str) -> str:
+    """Use the local GECBH index when a live GECBH page is unavailable."""
+    if "gecbh.ac.in" not in source_url:
+        return ""
+
+    try:
+        pages_by_url = {
+            page["url"]: page
+            for page in load_index()
+            if page.get("content")
+        }
+        relevant_urls = find_relevant_pages(query, source_url)
+    except (FileNotFoundError, OSError, TypeError, ValueError):
+        return ""
+
+    return "\n\n".join(
+        pages_by_url[url]["content"]
+        for url in relevant_urls
+        if url in pages_by_url
+    )
 
 
 def run_agent(query: str, session_cache: dict | None = None) -> dict:
@@ -134,17 +157,11 @@ def run_agent(query: str, session_cache: dict | None = None) -> dict:
     # =========================================================
 
     if not response.function_calls:
-
-        answer = extract_response_text(response)
-
-        if not answer:
-            answer = (
+        return {
+            "answer": (
                 "The requested information could not be found "
                 "in the registered sources."
-            )
-
-        return {
-            "answer": answer,
+            ),
             "tool_name": None,
             "source_url": None,
             "invocation_log": {
@@ -202,18 +219,24 @@ def run_agent(query: str, session_cache: dict | None = None) -> dict:
         else:
             content = fetch_tool(source_url)
 
+            if not content:
+                content = fetch_indexed_content(query, source_url)
+                if content:
+                    cache_status = "INDEX"
+
             # Only cache successful, non-empty fetches.
             if content and content.strip() and session_cache is not None:
                 session_cache[source_url] = content
 
-        fetched_contents.append(
-            {
-                "name": source_name,
-                "url": source_url,
-                "content": content,
-                "cache_status": cache_status,
-            }
-        )
+        if content and content.strip():
+            fetched_contents.append(
+                {
+                    "name": source_name,
+                    "url": source_url,
+                    "content": content,
+                    "cache_status": cache_status,
+                }
+            )
 
     # =========================================================
     # 6. SAFETY CHECK

@@ -17,7 +17,7 @@ def test_agent_requires_api_key():
                 mock_client.assert_not_called()
 
 
-def test_agent_returns_answer_from_gemini():
+def test_agent_rejects_ungrounded_gemini_answer():
     fake_response = MagicMock()
 
     fake_response.function_calls = []
@@ -35,9 +35,29 @@ def test_agent_returns_answer_from_gemini():
 
             result = run_agent("What is the vision of GECBH?")
 
-    assert result["answer"] == "GECBH aims to excel in higher learning."
+    assert "could not be found" in result["answer"].lower()
     assert result["tool_name"] is None
     assert result["source_url"] is None
+
+
+def test_agent_rejects_empty_selected_source():
+    first_response = MagicMock()
+    function_call = MagicMock()
+    function_call.name = "gecbh_official"
+    first_response.function_calls = [function_call]
+
+    mock_client_instance = MagicMock()
+    mock_client_instance.models.generate_content.return_value = first_response
+
+    with patch("llm.agent.Client", return_value=mock_client_instance):
+        with patch("llm.agent.os.getenv", return_value="fake-api-key"):
+            with patch("llm.agent.fetch_tool", return_value=""):
+                with patch("llm.agent.fetch_indexed_content", return_value=""):
+                    result = run_agent("What is the vision of GECBH?")
+
+    assert "could not be identified" in result["answer"].lower()
+    assert result["invocation_log"]["fetch_status"] == "failed"
+    assert mock_client_instance.models.generate_content.call_count == 1
     
 def test_agent_handles_empty_gemini_response():
     fake_response = MagicMock()

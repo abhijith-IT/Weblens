@@ -9,6 +9,8 @@ import requests
 import trafilatura
 from bs4 import BeautifulSoup
 
+from web.cleaner import sanitize_text
+
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -57,7 +59,7 @@ def fetch_tool(url: str) -> str:
         )
 
         if text and text.strip():
-            return text.strip()
+            return sanitize_text(text)
 
     except Exception:
         pass
@@ -73,7 +75,7 @@ def fetch_tool(url: str) -> str:
 
         text = soup.get_text(" ", strip=True)
 
-        return text.strip()
+        return sanitize_text(text)
 
     except Exception:
         return ""
